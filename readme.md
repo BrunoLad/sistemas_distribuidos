@@ -1,1 +1,1 @@
-"Disciplina de Sistemas Distribu¡dos 2019.2. Teoria ministrada pelo Prof. Vladimir e Pratica ministrada pelo Prof. Emilio." 
+"Disciplina de Sistemas Distribu¡dos da UFABC 2019.2. Ministrada pelo Prof. Vladimir (teoria) e Prof. Emilio (pratica)" 
