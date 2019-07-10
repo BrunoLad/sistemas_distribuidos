@@ -17,22 +17,35 @@ import java.util.Random;
  *
  * @author bruno
  */
-public class Peer extends Thread implements Serializable{
+public class Peer extends Thread implements Serializable, Cloneable{
     private Peer z[]; // infos outros peers
     private String file;
     private int send;
     private Date receive; // Apenas utilizado para os outros peers (T4)
     private int counter; // quantidade de outros peers armazenados
     
+    public Peer () {
+        this.send = 0;
+        this.counter = 0;
+        this.z = new Peer[4];
+    }
+    
     @Override
     public void run() {
         
     }
     
-    public Peer () {
-        this.send = 0;
-        this.counter = 0;
-        this.z = new Peer[4];
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        // Assigning shallow copy to new reference variable p
+        Peer p = (Peer)super.clone();
+        
+        p.z = new Peer[4];
+        
+        // Create a new object for the field c
+        // and assign it to shallow copy obtained,
+        // to make it a deep copy
+        return p;
     }
     
     //T1
@@ -73,6 +86,7 @@ public class Peer extends Thread implements Serializable{
     
     // Recebimento do T2
     private void receiveStates() throws SocketException, IOException, ClassNotFoundException{
+        //Socket que ira ficar ouvindo e esperando comunicacao de outro peer
         DatagramSocket serverSocket = new DatagramSocket(9876);
         
         byte[] recBuffer = new byte[1024];
@@ -86,13 +100,45 @@ public class Peer extends Thread implements Serializable{
         ByteArrayInputStream bais = new ByteArrayInputStream(data.getData());
         final ObjectInputStream ois = new ObjectInputStream(bais);
         
-        Peer recebimento = (Peer)ois.readObject();
+        Factory fa = (Factory)ois.readObject();
+        Peer recebimento = fa.getPeer();
         recebimento.setReceive (new Date());
+        System.out.println("Arquivo: " + recebimento.getFile());
+        System.out.println("Versão: " + recebimento.getSend());
         this.z[this.counter] = recebimento;
         counter++;
         
         // fechamento da conexão
         serverSocket.close();
+    }
+    
+    // Envio do T3
+    private void sendOtherState() throws SocketException, IOException, ClassNotFoundException{
+        // endereço IP do host remoto (server)        
+        InetAddress IPAddress = InetAddress.getByName("127.0.0.1");
+        
+        // canal de comunicação não orientado à conexão
+        DatagramSocket clientSocket = new DatagramSocket();
+        
+        // Inicializando classe wrapper
+        Factory fa = new Factory(this);
+        
+        // Leitor para armazenar as informações do objeto
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream(6400);
+        final ObjectOutputStream oos = new ObjectOutputStream(baos);
+        oos.writeObject(fa);
+        
+        // Declaração e preenchimento do buffer de envio
+        final byte[] sendData = baos.toByteArray();
+        
+        // Criação do Datagrama na porta 9876
+        DatagramPacket sendPacket = 
+                new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
+        
+        // Atualização do contador de versões
+        System.out.println("Enviando informacao para servidor");
+        clientSocket.send(sendPacket);
+        this.setSend(this.getSend() + 1);
     }
     
     
@@ -102,11 +148,12 @@ public class Peer extends Thread implements Serializable{
         try {
             p1.readFromFile();
             p1.sendOwnState();
+            p1.receiveStates();
         } catch(SocketException e){
             System.err.println(e);
         } catch(UnknownHostException e){
             System.err.println(e);
-        } catch(IOException e){
+        } catch(IOException | ClassNotFoundException e){
             System.err.println(e);
         }
     }
