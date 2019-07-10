@@ -1,12 +1,17 @@
-import java.io.*;
-import java.net.*;
-import java.util.Scanner;
-
-public class Client {
+// Java program to illustrate Client side 
+// Implementation using DatagramSocket 
+import java.io.IOException; 
+import java.net.DatagramPacket; 
+import java.net.DatagramSocket; 
+import java.net.InetAddress; 
+import java.util.Scanner; 
+  
+public class UDPClient
+{ 
     public static void main(String args[]) throws IOException 
     { 
         Scanner sc = new Scanner(System.in); 
-
+  
         // Step 1:Create the socket object for 
         // carrying the data. 
         DatagramSocket ds = new DatagramSocket(); 
@@ -36,4 +41,4 @@ public class Client {
                 break; 
         } 
     } 
-}
+} 
