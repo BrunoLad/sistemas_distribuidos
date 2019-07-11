@@ -91,32 +91,63 @@ public class Peer implements Serializable, Cloneable {
         clientSocket.send(sendPacket);
     }
 
-    // Recebimento do T2 e, por enquanto, T3
+    // Recebimento do T2 e T3, thread separada para ficar escutando as mensagens
     private void receiveStates() throws SocketException, IOException, ClassNotFoundException {
-        //Socket que ira ficar ouvindo e esperando comunicacao de outro peer
+        // Socket que ira ficar ouvindo e esperando comunicacao de outro peer
         DatagramSocket serverSocket = new DatagramSocket(9876);
 
         byte[] recBuffer = new byte[1024];
 
         DatagramPacket data = new DatagramPacket(recBuffer, recBuffer.length);
 
-        //recebimento do datagrama do host remoto (método bloqueante)
+        // Recebimento do datagrama do host remoto (método bloqueante)
         serverSocket.receive(data);
 
         // Leitor para extrair as informações do objeto
         ByteArrayInputStream bais = new ByteArrayInputStream(data.getData());
         final ObjectInputStream ois = new ObjectInputStream(bais);
 
+        // Fazendo unwrap do Peer recebido e atualizando seu horario de recebimento
+        // com base no horário do Peer destino
         Factory fa = (Factory) ois.readObject();
         Peer recebimento = fa.getPeer();
         recebimento.setReceive(new Date());
-        System.out.println("Arquivo: " + recebimento.getFile());
-        System.out.println("Versão: " + recebimento.getVersion());
-        System.out.println("Data de chegada: " + recebimento.getReceive().toString());
-        this.z[this.counter] = recebimento;
-        counter++;
 
-        // fechamento da conexão
+//        System.out.println("Arquivo: " + recebimento.getFile());
+//        System.out.println("Versão: " + recebimento.getVersion());
+//        System.out.println("Data de chegada: " + recebimento.getReceive().toString());
+        if (recebimento.getIdentifier() == this.getIdentifier()) {
+            String msg = recebimento.getVersion() == this.getVersion()
+                    ? "Recebimento DUPLICADO " + recebimento.getVersion() + " vindo do peer X."
+                    : "Recebimento ANTIGO " + recebimento.getVersion() + " vindo do peer X.";
+
+            System.out.println(msg);
+        } else {
+            for (int i = 0; i < this.getCounter(); i++) {
+                Peer ref = this.z[i];
+                
+                //Verifica se o peer ja foi armazenado antes
+                if (recebimento.getIdentifier() == ref.getIdentifier()) {
+                    if (recebimento.getVersion() > ref.getVersion()) {
+                        this.z[i] = recebimento;
+                    } else {
+                        String msg = recebimento.getVersion() == ref.getVersion()
+                                ? "Recebimento DUPLICADO " + recebimento.getVersion() + " vindo do peer X."
+                                : "Recebimento ANTIGO " + recebimento.getVersion() + " vindo do peer X.";
+                        
+                        System.out.println(msg);
+                    }
+                    break;
+                }
+            }
+                if(this.getCounter() != (this.z.length - 1)){
+                    // Adiciona o peer na ultima posicao
+                    this.z[this.getCounter()] = recebimento;
+                    this.counter++;   
+                }
+        }
+
+        // Fechamento da conexao
         serverSocket.close();
     }
 
@@ -128,21 +159,21 @@ public class Peer implements Serializable, Cloneable {
             // Endereco IP do host remoto (server)        
             InetAddress IPAddress = InetAddress.getByName("127.0.0.1");
 
-            // Canal de comunicação não orientado à conexão
+            // Canal de comunicacao nao orientado a conexao
             DatagramSocket clientSocket = new DatagramSocket();
 
-            //Criando clone da istância para que possa ser enviado via rede
+            //Criando clone da istancia para que possa ser enviado via rede
             Peer p = this.z[rand.nextInt(this.getCounter())];
 
             // Inicializando classe wrapper com Peer a ser enviado
             Factory fa = new Factory(p);
 
-            // Leitor para armazenar as informações do objeto
+            // Leitor para armazenar as informacoes do objeto
             final ByteArrayOutputStream baos = new ByteArrayOutputStream(6400);
             final ObjectOutputStream oos = new ObjectOutputStream(baos);
             oos.writeObject(fa);
 
-            // Declaração e preenchimento do buffer de envio
+            // Declaracao e preenchimento do buffer de envio
             final byte[] sendData = baos.toByteArray();
 
             // Need to pick a random port from a selection of ports
@@ -154,15 +185,43 @@ public class Peer implements Serializable, Cloneable {
             clientSocket.send(sendPacket);
         }
     }
-    
+
     // T4 - Apagará os estados que são muito antigos
     private void deleteStates() {
-        
+        for (int i = 0; i < this.counter; i++) {
+            if (this.z[i] != null) {
+                // Calcula a diferenca entre tempo de quando a ultima msg foi recebida e agora
+                long deltaTime = (new Date()).getTime() - this.z[i].getReceive().getTime();
+
+                //getTime retorna millisegundos, assume-se 30 segundos a baixo
+                if (deltaTime <= 30000) {
+                    // Informa que os estados de alguns peers estão sendo eliminados
+                    System.out.println("Eliminando estados do peer W, Z");
+
+                    // Remove a referencia para a mensagem e atualiza o contador do peer
+                    this.z[i] = null;
+                    this.setCounter(this.getCounter() - 1);
+
+                    this.arrangePeers(i);
+                }
+            }
+        }
+    }
+
+    private void arrangePeers(int pos) {
+        // Verifica se nao eh a ultima posicao
+        if (pos != (this.z.length - 1)) {
+            // Atrasa o vetor para o posicionamento correto
+            while (this.z[pos + 1] != null) {
+                // Recuo uma posicao
+                this.z[pos] = this.z[pos + 1];
+                pos++;
+            }
+        }
     }
 
     public static void main(String[] args) {
         Peer p1 = new Peer();
-
         try {
             p1.readFromFile();
             p1.sendOwnState();
@@ -249,7 +308,7 @@ class Factory implements Serializable {
         return peer;
     }
 
-    public void setPeer(Peer p) {
+    private void setPeer(Peer p) {
         this.peer = p;
     }
 }
