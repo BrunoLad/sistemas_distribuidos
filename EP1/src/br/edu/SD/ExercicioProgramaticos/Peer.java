@@ -12,8 +12,6 @@ import java.io.*;
 import java.net.*;
 import java.util.Date;
 import java.util.Random;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
@@ -27,6 +25,7 @@ public class Peer implements Serializable, Cloneable {
     private Date receive;   // Apenas utilizado pelo peers em Z (T4)
     private int counter;    // Quantidade de outros peers armazenados
     private int identifier; // Will store portNumber as unique identifier
+    private static final int PORTS[] = {9877, 9878, 9879, 9880};
 
     public Peer() {
         this.version = 0;
@@ -56,7 +55,7 @@ public class Peer implements Serializable, Cloneable {
     }
 
     // T1
-    protected void readFromFile() throws IOException {
+    protected String readFromFile() throws IOException {
         // Local onde o arquivo eh extraido
         Path origin = Paths.get("/home/bruno/NetBeansProjects/EP1"
                 + "/src/br/edu/SD/ExercicioProgramaticos/teste/teste.txt");
@@ -65,13 +64,13 @@ public class Peer implements Serializable, Cloneable {
         this.setFile(origin.getFileName().toString());
         this.setVersion(this.getVersion() + 1);
 
-        // Imprime a mensagem, mostrando que a thread foi executada
-        System.out.println("Arquivo " + this.getFile() + " obtido da pasta."
-                + " Estado atual de X " + this.getVersion());
+        // Retorna a mensagem, mostrando que a thread foi executada
+        return "Arquivo " + this.getFile() + " obtido da pasta."
+                + " Estado atual de X " + this.getVersion();
     }
 
     // Envio do T2
-    protected void sendOwnState() throws UnknownHostException, SocketException, IOException, CloneNotSupportedException {
+    protected String sendOwnState() throws UnknownHostException, SocketException, IOException, CloneNotSupportedException {
         // endereço IP do host remoto (server)
         InetAddress IPAddress = InetAddress.getByName("127.0.0.1");
 
@@ -92,77 +91,88 @@ public class Peer implements Serializable, Cloneable {
         // Declaração e preenchimento do buffer de envio
         final byte[] sendData = baos.toByteArray();
 
-        // Criação do Datagrama na porta 9876
-        DatagramPacket sendPacket
-                = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
+        Random rand = new Random();
 
-        // Envia pacote e imprima mensagem
-        System.out.println("Envio " + p.getVersion() + " por gossip ao peer W.");
+        // Criação do Datagrama numa porta aleatoriamente escolhida
+        DatagramPacket sendPacket
+                = new DatagramPacket(sendData, sendData.length,
+                        IPAddress, Peer.PORTS[rand.nextInt(4)]);
+
+        // Envia pacote e retorna mensagem
         clientSocket.send(sendPacket);
+        return "Envio " + p.getVersion() + " por gossip ao peer W.";
     }
 
     // Recebimento do T2 e T3, thread separada para ficar escutando as mensagens
     protected void receiveStates() throws SocketException, IOException, ClassNotFoundException {
         // Socket que ira ficar ouvindo e esperando comunicacao de outro peer
-        DatagramSocket serverSocket = new DatagramSocket(9876);
+        DatagramSocket serverSocket = new DatagramSocket(this.getIdentifier());
 
-        byte[] recBuffer = new byte[1024];
+        while (true) {
 
-        DatagramPacket data = new DatagramPacket(recBuffer, recBuffer.length);
+            byte[] recBuffer = new byte[1024];
 
-        // Recebimento do datagrama do host remoto (método bloqueante)
-        serverSocket.receive(data);
+            DatagramPacket data = new DatagramPacket(recBuffer, recBuffer.length);
 
-        // Leitor para extrair as informações do objeto
-        ByteArrayInputStream bais = new ByteArrayInputStream(data.getData());
-        final ObjectInputStream ois = new ObjectInputStream(bais);
+            // Recebimento do datagrama do host remoto (método bloqueante)
+            serverSocket.receive(data);
 
-        // Fazendo unwrap do Peer recebido e atualizando seu horario de recebimento
-        // com base no horário do Peer destino
-        Factory fa = (Factory) ois.readObject();
-        Peer recebimento = fa.getPeer();
-        recebimento.setReceive(new Date());
+            // Leitor para extrair as informações do objeto
+            ByteArrayInputStream bais = new ByteArrayInputStream(data.getData());
+            final ObjectInputStream ois = new ObjectInputStream(bais);
+
+            // Fazendo unwrap do Peer recebido e atualizando seu horario de recebimento
+            // com base no horário do Peer destino
+            Factory fa = (Factory) ois.readObject();
+            Peer recebimento = fa.getPeer();
+            recebimento.setReceive(new Date());
 
 //        System.out.println("Arquivo: " + recebimento.getFile());
 //        System.out.println("Versão: " + recebimento.getVersion());
 //        System.out.println("Data de chegada: " + recebimento.getReceive().toString());
-        if (recebimento.getIdentifier() == this.getIdentifier()) {
-            String msg = recebimento.getVersion() == this.getVersion()
-                    ? "Recebimento DUPLICADO " + recebimento.getVersion() + " vindo do peer X."
-                    : "Recebimento ANTIGO " + recebimento.getVersion() + " vindo do peer X.";
+            if (recebimento.getIdentifier() == this.getIdentifier()) {
+                String msg = recebimento.getVersion() == this.getVersion()
+                        ? "Recebimento DUPLICADO " + recebimento.getVersion() + " vindo do peer X."
+                        : "Recebimento ANTIGO " + recebimento.getVersion() + " vindo do peer X.";
 
-            System.out.println(msg);
-        } else {
-            for (int i = 0; i < this.getCounter(); i++) {
-                Peer ref = this.z[i];
+                System.out.println(msg);
+            } else {
+                for (int i = 0; i < this.getCounter(); i++) {
+                    Peer ref = this.z[i];
 
-                //Verifica se o peer ja foi armazenado antes
-                if (recebimento.getIdentifier() == ref.getIdentifier()) {
-                    if (recebimento.getVersion() > ref.getVersion()) {
-                        this.z[i] = recebimento;
-                    } else {
-                        String msg = recebimento.getVersion() == ref.getVersion()
-                                ? "Recebimento DUPLICADO " + recebimento.getVersion() + " vindo do peer X."
-                                : "Recebimento ANTIGO " + recebimento.getVersion() + " vindo do peer X.";
+                    //Verifica se o peer ja foi armazenado antes
+                    if (recebimento.getIdentifier() == ref.getIdentifier()) {
+                        if (recebimento.getVersion() > ref.getVersion()) {
+                            this.z[i] = recebimento;
+                        } else {
+                            String msg = recebimento.getVersion() == ref.getVersion()
+                                    ? "Recebimento DUPLICADO " + recebimento.getVersion() + " vindo do peer X."
+                                    : "Recebimento ANTIGO " + recebimento.getVersion() + " vindo do peer X.";
 
-                        System.out.println(msg);
+                            System.out.println(msg);
+                        }
                     }
-                    break;
+                }
+                if (this.getCounter() != (this.z.length - 1)) {
+                    // Adiciona o peer na ultima posicao
+                    this.z[this.getCounter()] = recebimento;
+                    this.counter++;
                 }
             }
-            if (this.getCounter() != (this.z.length - 1)) {
-                // Adiciona o peer na ultima posicao
-                this.z[this.getCounter()] = recebimento;
-                this.counter++;
-            }
-        }
 
-        // Fechamento da conexao
-        serverSocket.close();
+            
+            System.out.println("Recebimento estado "
+                    + recebimento.getFile() + " versao "
+                    + recebimento.getVersion()
+                    + " por gossip vindo do peer X.");
+        }
+        //Fechamento da conexao
+        //serverSocket.close();
+        //return "Encerrando...";
     }
 
     // Envio do T3
-    protected void sendOtherState() throws SocketException, IOException, ClassNotFoundException {
+    protected String sendOtherState() throws SocketException, IOException, ClassNotFoundException {
         if (this.getCounter() != 0) {
             Random rand = new Random();
 
@@ -188,12 +198,15 @@ public class Peer implements Serializable, Cloneable {
 
             // Need to pick a random port from a selection of ports
             DatagramPacket sendPacket
-                    = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
+                    = new DatagramPacket(sendData, sendData.length,
+                            IPAddress, Peer.PORTS[rand.nextInt(4)]);
 
             //Envia o pacote
-            System.out.println("Envio " + p.getVersion() + " por gossip ao peer Z.");
             clientSocket.send(sendPacket);
+            return "Envio " + p.getVersion() + " por gossip ao peer Z.";
         }
+        return "Pacote nao enviado, o Peer nao possui "
+                + "informacao de nenhum outro peer";
     }
 
     // T4 - Apagará os estados que são muito antigos

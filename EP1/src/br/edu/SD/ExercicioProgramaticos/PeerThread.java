@@ -49,22 +49,24 @@ public class PeerThread implements Runnable, Serializable {
     @Override
     public void run() {
         try {
-            while (true) {
+            while (!this.getName().equals("T0") && true) {
                 switch (this.getName()) {
-                    case "T0":
-                        this.getP().receiveStates();
-                        break;
+                    //case "T0":
+                    //    break;
                     case "T1":
-                        this.getP().readFromFile();
+                        System.out.println(this.getName() + " "
+                                + this.getP().readFromFile());
                         Thread.sleep(2000);
                         break;
                     case "T2":
                         Thread.sleep(5000);
-                        this.getP().sendOwnState();
+                        System.out.println(this.getName() + " "
+                                + this.getP().sendOwnState());
                         break;
                     case "T3":
                         Thread.sleep(7000);
-                        this.getP().sendOtherState();
+                        System.out.println(this.getName() + " "
+                                + this.getP().sendOtherState());
                         break;
                     default:
                         Thread.sleep(15000);
@@ -72,6 +74,8 @@ public class PeerThread implements Runnable, Serializable {
                         break;
                 }
             }
+            this.getP().receiveStates();
+            
         } catch (InterruptedException e) {
             System.err.println(e);
             System.err.println(this.getName() + " Interrupted");
