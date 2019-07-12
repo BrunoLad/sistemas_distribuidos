@@ -69,7 +69,7 @@ public class PeerThread implements Runnable, Serializable {
                                 + this.getP().sendOtherState());
                         break;
                     default:
-                        Thread.sleep(15000);
+                        Thread.sleep(10000);
                         this.getP().deleteStates();
                         break;
                 }

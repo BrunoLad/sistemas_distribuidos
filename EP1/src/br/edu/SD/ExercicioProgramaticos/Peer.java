@@ -25,7 +25,7 @@ public class Peer implements Serializable, Cloneable {
     private Date receive;   // Apenas utilizado pelo peers em Z (T4)
     private int counter;    // Quantidade de outros peers armazenados
     private int identifier; // Will store portNumber as unique identifier
-    private static final int PORTS[] = {9877, 9878, 9879, 9880};
+    private static final int PORTS[] = {9877, 9878, 9879, 9880}; // Endereços dos demais peers
 
     public Peer() {
         this.version = 0;
@@ -92,15 +92,18 @@ public class Peer implements Serializable, Cloneable {
         final byte[] sendData = baos.toByteArray();
 
         Random rand = new Random();
+        int port = Peer.PORTS[rand.nextInt(4)];
 
         // Criação do Datagrama numa porta aleatoriamente escolhida
         DatagramPacket sendPacket
                 = new DatagramPacket(sendData, sendData.length,
-                        IPAddress, Peer.PORTS[rand.nextInt(4)]);
+                        IPAddress, port);
 
         // Envia pacote e retorna mensagem
         clientSocket.send(sendPacket);
-        return "Envio " + p.getVersion() + " por gossip ao peer W.";
+        return "Envio estado " + p.getFile() + " versao " + p.getVersion()
+                + " do endereco " + this.getIdentifier()
+                + " por gossip ao peer W. (" + port + ")";
     }
 
     // Recebimento do T2 e T3, thread separada para ficar escutando as mensagens
@@ -132,8 +135,10 @@ public class Peer implements Serializable, Cloneable {
 //        System.out.println("Data de chegada: " + recebimento.getReceive().toString());
             if (recebimento.getIdentifier() == this.getIdentifier()) {
                 String msg = recebimento.getVersion() == this.getVersion()
-                        ? "Recebimento DUPLICADO " + recebimento.getVersion() + " vindo do peer X."
-                        : "Recebimento ANTIGO " + recebimento.getVersion() + " vindo do peer X.";
+                        ? "Recebimento DUPLICADO " + recebimento.getVersion() + " do estado " + recebimento.getFile()
+                        + " vindo do peer X. (" + data.getPort() + ")"
+                        : "Recebimento ANTIGO " + recebimento.getVersion() + " do estado " + recebimento.getFile()
+                        + " vindo do peer X. (" + data.getPort() + ")";
 
                 System.out.println(msg);
             } else {
@@ -146,8 +151,10 @@ public class Peer implements Serializable, Cloneable {
                             this.z[i] = recebimento;
                         } else {
                             String msg = recebimento.getVersion() == ref.getVersion()
-                                    ? "Recebimento DUPLICADO " + recebimento.getVersion() + " vindo do peer X."
-                                    : "Recebimento ANTIGO " + recebimento.getVersion() + " vindo do peer X.";
+                                    ? "Recebimento DUPLICADO " + recebimento.getVersion() + " do estado " + recebimento.getFile()
+                                    + " vindo do peer X. (" + data.getPort() + ")"
+                                    : "Recebimento ANTIGO " + recebimento.getVersion() + " do estado " + recebimento.getFile()
+                                    + " vindo do peer X. (" + data.getPort() + ")";
 
                             System.out.println(msg);
                         }
@@ -160,11 +167,10 @@ public class Peer implements Serializable, Cloneable {
                 }
             }
 
-            
             System.out.println("Recebimento estado "
                     + recebimento.getFile() + " versao "
                     + recebimento.getVersion()
-                    + " por gossip vindo do peer X.");
+                    + " por gossip vindo do peer X. (" + recebimento.getIdentifier() + ")");
         }
         //Fechamento da conexao
         //serverSocket.close();
@@ -196,14 +202,18 @@ public class Peer implements Serializable, Cloneable {
             // Declaracao e preenchimento do buffer de envio
             final byte[] sendData = baos.toByteArray();
 
+            int port = Peer.PORTS[rand.nextInt(4)];
+
             // Need to pick a random port from a selection of ports
             DatagramPacket sendPacket
                     = new DatagramPacket(sendData, sendData.length,
-                            IPAddress, Peer.PORTS[rand.nextInt(4)]);
+                            IPAddress, port);
 
             //Envia o pacote
             clientSocket.send(sendPacket);
-            return "Envio " + p.getVersion() + " por gossip ao peer Z.";
+            return "Envio estado " + p.getFile() + " versao " + p.getVersion()
+                    + " do endereco " + this.getIdentifier()
+                    + " por gossip ao peer Z. (" + port + ")";
         }
         return "Pacote nao enviado, o Peer nao possui "
                 + "informacao de nenhum outro peer";
@@ -211,15 +221,20 @@ public class Peer implements Serializable, Cloneable {
 
     // T4 - Apagará os estados que são muito antigos
     protected void deleteStates() {
+        int eliminados = 0;
+
         for (int i = 0; i < this.counter; i++) {
             if (this.z[i] != null) {
                 // Calcula a diferenca entre tempo de quando a ultima msg foi recebida e agora
                 long deltaTime = (new Date()).getTime() - this.z[i].getReceive().getTime();
 
-                //getTime retorna millisegundos, assume-se 15 segundos a baixo
-                if (deltaTime <= 15000) {
+                //getTime retorna millisegundos, assume-se 10 segundos a baixo
+                if (deltaTime >= 10000) {
                     // Informa que os estados de alguns peers estão sendo eliminados
                     System.out.println("Eliminando estados do peer W, Z");
+                    System.out.println("Estado do peer " + this.z[i].getIdentifier() + " eliminado.");
+
+                    eliminados++;
 
                     // Remove a referencia para a mensagem e atualiza o contador do peer
                     this.z[i] = null;
@@ -229,6 +244,7 @@ public class Peer implements Serializable, Cloneable {
                 }
             }
         }
+        System.out.println(eliminados + " peers foram eliminados");
     }
 
     private void arrangePeers(int pos) {
