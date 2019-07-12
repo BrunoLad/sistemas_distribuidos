@@ -30,6 +30,7 @@ public class Peer implements Serializable, Cloneable {
         this.version = 0;
         this.counter = 0;
         this.z = new Peer[4];
+        this.identifier = 9876; //Iniciando este peer na porta 9876
     }
 
     @Override
@@ -46,7 +47,7 @@ public class Peer implements Serializable, Cloneable {
     }
 
     // T1
-    private void readFromFile() throws IOException {
+    protected void readFromFile() throws IOException {
         // Local onde o arquivo eh extraido
         Path origin = Paths.get("/home/bruno/NetBeansProjects/EP1"
                 + "/src/br/edu/SD/ExercicioProgramaticos/teste/teste.txt");
@@ -61,7 +62,7 @@ public class Peer implements Serializable, Cloneable {
     }
 
     // Envio do T2
-    private void sendOwnState() throws UnknownHostException, SocketException, IOException, CloneNotSupportedException {
+    protected void sendOwnState() throws UnknownHostException, SocketException, IOException, CloneNotSupportedException {
         // endereço IP do host remoto (server)        
         InetAddress IPAddress = InetAddress.getByName("127.0.0.1");
 
@@ -92,7 +93,7 @@ public class Peer implements Serializable, Cloneable {
     }
 
     // Recebimento do T2 e T3, thread separada para ficar escutando as mensagens
-    private void receiveStates() throws SocketException, IOException, ClassNotFoundException {
+    protected void receiveStates() throws SocketException, IOException, ClassNotFoundException {
         // Socket que ira ficar ouvindo e esperando comunicacao de outro peer
         DatagramSocket serverSocket = new DatagramSocket(9876);
 
@@ -152,7 +153,7 @@ public class Peer implements Serializable, Cloneable {
     }
 
     // Envio do T3
-    private void sendOtherState() throws SocketException, IOException, ClassNotFoundException {
+    protected void sendOtherState() throws SocketException, IOException, ClassNotFoundException {
         if (this.getCounter() != 0) {
             Random rand = new Random();
 
@@ -187,14 +188,14 @@ public class Peer implements Serializable, Cloneable {
     }
 
     // T4 - Apagará os estados que são muito antigos
-    private void deleteStates() {
+    protected void deleteStates() {
         for (int i = 0; i < this.counter; i++) {
             if (this.z[i] != null) {
                 // Calcula a diferenca entre tempo de quando a ultima msg foi recebida e agora
                 long deltaTime = (new Date()).getTime() - this.z[i].getReceive().getTime();
 
-                //getTime retorna millisegundos, assume-se 30 segundos a baixo
-                if (deltaTime <= 30000) {
+                //getTime retorna millisegundos, assume-se 15 segundos a baixo
+                if (deltaTime <= 15000) {
                     // Informa que os estados de alguns peers estão sendo eliminados
                     System.out.println("Eliminando estados do peer W, Z");
 
@@ -281,34 +282,5 @@ public class Peer implements Serializable, Cloneable {
 
     public void setIdentifier(int identifier) {
         this.identifier = identifier;
-    }
-}
-
-// Classe para encapsular o objeto de Peer e enviar pela rede
-class Factory implements Serializable {
-
-    private Peer peer;
-
-    public Factory() {
-    }
-
-    public Factory(Peer p) {
-        this.setPeer(p);
-    }
-
-    private void writeObject(ObjectOutputStream out) throws IOException {
-        out.defaultWriteObject();
-    }
-
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        in.defaultReadObject();
-    }
-
-    public Peer getPeer() {
-        return peer;
-    }
-
-    private void setPeer(Peer p) {
-        this.peer = p;
     }
 }
