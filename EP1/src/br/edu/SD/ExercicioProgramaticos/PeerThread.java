@@ -6,67 +6,86 @@
 package br.edu.SD.ExercicioProgramaticos;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.*;
 
 /**
  *
  * @author bruno
  */
-public class PeerThread extends Peer implements Runnable{
-    String name;
-    Thread t;
-    
-    public PeerThread(String thread){
+public class PeerThread implements Runnable, Serializable {
+
+    private String name;
+    private Thread t;
+    private Peer p;
+
+    public Peer getP() {
+        return p;
+    }
+
+    public void setP(Peer p) {
+        this.p = p;
+    }
+
+    public PeerThread() {
+
+    }
+
+    public PeerThread(String thread) {
         this.name = thread;
         t = new Thread(this, name);
         System.out.println("Nova thread: " + this.t);
         t.start();
     }
-    
+
+    public PeerThread(String thread, Peer p) {
+        this.p = p;
+        this.name = thread;
+        t = new Thread(this, name);
+        System.out.println("Nova thread: " + this.t);
+        t.start();
+    }
+
     @Override
-    public void run(){
+    public void run() {
         try {
-            while(true){
+            while (true) {
                 switch (this.getName()) {
                     case "T0":
-                        super.receiveStates();
+                        this.getP().receiveStates();
                         break;
                     case "T1":
-                        super.readFromFile();
+                        this.getP().readFromFile();
                         Thread.sleep(2000);
                         break;
                     case "T2":
-                        super.sendOwnState();
                         Thread.sleep(5000);
+                        this.getP().sendOwnState();
                         break;
                     case "T3":
-                        super.sendOtherState();
                         Thread.sleep(7000);
+                        this.getP().sendOtherState();
                         break;
                     default:
-                        super.deleteStates();
                         Thread.sleep(15000);
+                        this.getP().deleteStates();
                         break;
                 }
             }
-        }
-        catch(InterruptedException e){
+        } catch (InterruptedException e) {
             System.err.println(e);
             System.err.println(this.getName() + " Interrupted");
-        }
-         catch (SocketException e) {
+        } catch (SocketException e) {
             System.err.println(e);
         } catch (UnknownHostException e) {
             System.err.println(e);
         } catch (IOException | ClassNotFoundException | CloneNotSupportedException e) {
             System.err.println(e);
-        }
-        
-        finally {
+        } finally {
             System.out.println(name + " exiting.");
         }
     }
-    
+
     public String getName() {
         return name;
     }

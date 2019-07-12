@@ -12,6 +12,8 @@ import java.io.*;
 import java.net.*;
 import java.util.Date;
 import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -30,7 +32,14 @@ public class Peer implements Serializable, Cloneable {
         this.version = 0;
         this.counter = 0;
         this.z = new Peer[4];
-        this.identifier = 9876; //Iniciando este peer na porta 9876
+        //this.identifier = 9876;
+    }
+
+    public Peer(int port) {
+        this.version = 0;
+        this.counter = 0;
+        this.z = new Peer[4];
+        this.identifier = port; //Iniciando este peer na porta passada
     }
 
     @Override
@@ -40,7 +49,7 @@ public class Peer implements Serializable, Cloneable {
 
         p.z = new Peer[4];
 
-        // Criar novo objeto para o campo z 
+        // Criar novo objeto para o campo z
         // e atribui a copia rasa obtida,
         // para torná-la uma copia profunda
         return p;
@@ -63,7 +72,7 @@ public class Peer implements Serializable, Cloneable {
 
     // Envio do T2
     protected void sendOwnState() throws UnknownHostException, SocketException, IOException, CloneNotSupportedException {
-        // endereço IP do host remoto (server)        
+        // endereço IP do host remoto (server)
         InetAddress IPAddress = InetAddress.getByName("127.0.0.1");
 
         // canal de comunicação não orientado à conexão
@@ -126,7 +135,7 @@ public class Peer implements Serializable, Cloneable {
         } else {
             for (int i = 0; i < this.getCounter(); i++) {
                 Peer ref = this.z[i];
-                
+
                 //Verifica se o peer ja foi armazenado antes
                 if (recebimento.getIdentifier() == ref.getIdentifier()) {
                     if (recebimento.getVersion() > ref.getVersion()) {
@@ -135,17 +144,17 @@ public class Peer implements Serializable, Cloneable {
                         String msg = recebimento.getVersion() == ref.getVersion()
                                 ? "Recebimento DUPLICADO " + recebimento.getVersion() + " vindo do peer X."
                                 : "Recebimento ANTIGO " + recebimento.getVersion() + " vindo do peer X.";
-                        
+
                         System.out.println(msg);
                     }
                     break;
                 }
             }
-                if(this.getCounter() != (this.z.length - 1)){
-                    // Adiciona o peer na ultima posicao
-                    this.z[this.getCounter()] = recebimento;
-                    this.counter++;   
-                }
+            if (this.getCounter() != (this.z.length - 1)) {
+                // Adiciona o peer na ultima posicao
+                this.z[this.getCounter()] = recebimento;
+                this.counter++;
+            }
         }
 
         // Fechamento da conexao
@@ -157,7 +166,7 @@ public class Peer implements Serializable, Cloneable {
         if (this.getCounter() != 0) {
             Random rand = new Random();
 
-            // Endereco IP do host remoto (server)        
+            // Endereco IP do host remoto (server)
             InetAddress IPAddress = InetAddress.getByName("127.0.0.1");
 
             // Canal de comunicacao nao orientado a conexao
@@ -222,18 +231,26 @@ public class Peer implements Serializable, Cloneable {
     }
 
     public static void main(String[] args) {
-        Peer p1 = new Peer();
-        try {
-            p1.readFromFile();
-            p1.sendOwnState();
-            p1.receiveStates();
-        } catch (SocketException e) {
+        // Criando o peer de referencia na porta especificada
+        Peer p1 = new Peer(9876);
+
+        // Criando threads para cada um dos metodos
+        PeerThread t0 = new PeerThread("T0", p1);
+        PeerThread t1 = new PeerThread("T1", p1);
+        PeerThread t2 = new PeerThread("T2", p1);
+        PeerThread t3 = new PeerThread("T3", p1);
+        PeerThread t4 = new PeerThread("T4", p1);
+
+        /*try {
+        
+        }
+        catch (SocketException e) {
             System.err.println(e);
         } catch (UnknownHostException e) {
             System.err.println(e);
         } catch (IOException | ClassNotFoundException | CloneNotSupportedException e) {
             System.err.println(e);
-        }
+        }*/
     }
 
     public Peer[] getZ() {

@@ -13,7 +13,7 @@ import java.io.*;
  */
 // Classe para encapsular o objeto de Peer e enviar pela rede
 public class Factory implements Serializable {
-    
+
     private Peer peer;
 
     public Factory() {
