@@ -18,6 +18,7 @@ public class Client implements Runnable {
     private static final String HOME = System.getProperty("user.home")
             + "/Documents/UFABC/links/";                            // Repositorio base do cliente, para obter links
     private DatagramSocket ds;
+    private InetAddress address;
 
     Client() throws SocketException {
         this.ds = new DatagramSocket(10000);
@@ -44,6 +45,10 @@ public class Client implements Runnable {
 
     public void setDs(DatagramSocket ds) {
         this.ds = ds;
+    }
+
+    public InetAddress getAddress() {
+        return this.address;
     }
 
     /**
@@ -96,7 +101,7 @@ public class Client implements Runnable {
 
         this.saveMessage(respAux);
 
-        System.out.println("Índice invertido recebido, armazenado na pasta " + Client.HOME);
+        System.out.println("Indice invertido recebido, armazenado na pasta " + Client.HOME);
     }
 
     private String createMessage() {

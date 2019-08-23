@@ -5,6 +5,11 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.lang.*;
+import org.jsoup.Jsoup;
+import org.jsoup.helper.Validate;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 /**
  *
@@ -14,7 +19,8 @@ public class Mapper implements Runnable {
     private Reducer r[];                        // Informacao sobre o endereco do Reducer
     private DatagramSocket ds;                  // Socket de conexao do Mapper
     private InetAddress address;                // Endereco do proprio Mapper
-    private ArrayList<String> links;            // Links que sera montado para envio pro Reducer
+    private ArrayList<Link> links;              // Estrutura que armazena os enderecos baixados da urls remotas
+    private int port;                           // Porta de acesso para o Mapper
 
     public Mapper() throws SocketException { 
         this.links = new ArrayList<>();
@@ -79,17 +85,22 @@ public class Mapper implements Runnable {
     public void setLinks(ArrayList<String> links) {
         this.links = links;
     }
+
+    public int getPort() {
+        return this.port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
     
     public void receive() throws IOException {
         byte[] recBuffer = new byte[1024];
 
         DatagramPacket data = new DatagramPacket(recBuffer, recBuffer.length);
 
-        // Recebimento do datagrama do host remoto (método bloqueante)
+        // Recebimento do datagrama do coordenador remoto (método bloqueante)
         this.getDs().receive(data);
-
-        int clientPort = data.getPort();
-        InetAddress clientAddress = data.getAddress();
 
         // String com a resposta do peer (caso tenha recebido)
         String resp = new String(data.getData(), 0, data.getLength());
@@ -97,8 +108,16 @@ public class Mapper implements Runnable {
         // Pega os links recebidos pelo Coordenador e os separa
         // Na ultima posicao havera o endereco do cliente
         String[] respAux = resp.split("#");
+
+        String[] dadosCliente = respAux[respAux.length - 1].split(":");
+
+        // Pega o endereço e porta do cliente que está na última posição
+        InetAddress clientAddress = InetAddress.getByName(dadosCliente[0])
+        int clientPort = Integer.parseInt(dadosCliente[1]);
         
-        
+        // Pegando todas as urls, menos a ultima que contem o endereço do cliente
+        this.readFromURL(Arrays.copyOf(respAux, respAux.length-1));
+
         // Imprime mensagem no console do coordenador
         System.out.println("Recebendo lista L com " + (respAux.length - 1) + " URLs ... processando");
     }
@@ -107,9 +126,12 @@ public class Mapper implements Runnable {
 
     }
     
-    private void readFromURL() throws MalformedURLException, IOException {
+    private void readFromURL(String[] linksRef) throws MalformedURLException, IOException {
         
-        for(String link : links) {
+        for(String link : linksRef) {
+            // Inicializa a estrutura com cada endereço recebido
+            Link l = new Link(link);
+
             URL siteRef = new URL(link);
             BufferedReader in = new BufferedReader(
                     new InputStreamReader(siteRef.openStream()));
@@ -124,7 +146,7 @@ public class Mapper implements Runnable {
     
     @Override
     public void run() {
-    
+        
     }
     
     public static void main(String[] args) {

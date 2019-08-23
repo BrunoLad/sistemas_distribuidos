@@ -13,6 +13,7 @@ import java.lang.*;
 public class Coordinator implements Runnable {
     private Mapper[] m;                         //Endereço e informacoes dos mappers
     private DatagramSocket ds;
+    private final InetAddress address = "";
     
     /**
      * Construtor por padrão iniciando o canal de comunicação na porta 10000
@@ -46,6 +47,10 @@ public class Coordinator implements Runnable {
 
     public void setDs(DatagramSocket ds) {
         this.ds = ds;
+    }
+
+    public InetAddress getAddress() {
+        return this.address;
     }
     
     @Override
